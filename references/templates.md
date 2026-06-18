@@ -35,6 +35,9 @@ Goal Companion checkpoint.
 Current goal:
 {goal}
 
+Previous check-in:
+{previous_checkin}
+
 Progress since last checkpoint:
 {progress}
 
@@ -44,7 +47,7 @@ Evidence gathered:
 Open risks, blockers, or scope changes:
 {risks}
 
-Please return the Goal Upgrade Response Format. Only propose a materially changed goal if the new evidence changes outcome, scope, acceptance criteria, risk, or stop conditions.
+Please return the Check-In Capsule and Goal Upgrade Response Format. Always include a concise overview of what happened since the previous check-in. Include suggested goal statements alongside the summary. Only recommend replacing the active goal when the new evidence changes outcome, scope, acceptance criteria, risk, or stop conditions.
 ```
 
 ## Heartbeat Keepalive Prompt
@@ -58,7 +61,31 @@ Companion thread id:
 Current goal summary:
 {goal_summary}
 
-If the goal is still active, summarize public progress since the last checkpoint, send a compact checkpoint to the companion thread with send_message_to_thread, and ask whether the goal statement should be upgraded. If the goal is complete, blocked, canceled, or the companion thread id is unavailable, report that state and pause the matching heartbeat automation if possible.
+Previous check-in:
+{previous_checkin}
+
+Run every 25 minutes while this goal is active. If the goal is still active, give the user a short public overview of what happened since the last check-in, send a compact checkpoint to the companion thread with send_message_to_thread, and return suggested updated goal statements alongside the summary. If the goal is complete, blocked, canceled, or the companion thread id is unavailable, report that state and pause the matching heartbeat automation if possible.
+```
+
+## Check-In Capsule
+
+```text
+Since last check-in:
+<plain-language summary of meaningful progress, decisions, verification, or lack of movement>
+
+Evidence:
+- <test, file, log, screenshot, decision, or observation>
+
+Blockers or drift:
+- <blocker, scope change, uncertainty, or "None">
+
+Suggested goal statements:
+- Recommended: <best current goal statement>
+- Tighter: <smaller/simpler version, or "Not needed">
+- Stretch: <broader version only if useful, or "Not needed">
+
+Next 25-minute focus:
+<specific next action or checkpoint question>
 ```
 
 ## Goal Upgrade Response Format
@@ -67,8 +94,10 @@ If the goal is still active, summarize public progress since the last checkpoint
 Current goal:
 <one sentence>
 
-Proposed upgraded goal:
-<one to three sentences>
+Suggested goal statements:
+- Recommended: <one to three sentences>
+- Tighter: <smaller/simpler version, or "Not needed">
+- Stretch: <broader version only if useful, or "Not needed">
 
 Why it changed:
 <short evidence-backed explanation, or "No material change">
