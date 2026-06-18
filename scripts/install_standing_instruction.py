@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import os
 from pathlib import Path
+import re
 import sys
 
 
@@ -14,9 +15,14 @@ END_MARKER = "<!-- goal-companion:end -->"
 STANDING_BLOCK = """<!-- goal-companion:start -->
 # Goal Companion
 - Whenever I start a goal, use goal-companion and create a background side thread to refine goal statements.
-- During long goals, keep the companion active with heartbeat and milestone checkpoint updates, and stop the keepalive when the goal finishes.
+- Every 25 minutes during long goals, give me a concise overview of what happened since the last check-in, send that checkpoint to the companion, and include suggested updated goal statements with the summary.
+- Stop the keepalive when the goal finishes.
 <!-- goal-companion:end -->
 """
+MARKER_PATTERN = re.compile(
+    rf"{re.escape(START_MARKER)}.*?{re.escape(END_MARKER)}\r?\n?",
+    re.DOTALL,
+)
 
 
 def default_agents_path() -> Path:
@@ -50,36 +56,48 @@ def append_block(existing: str) -> str:
     return STANDING_BLOCK
 
 
+def upsert_block(existing: str) -> tuple[str, str]:
+    has_start = START_MARKER in existing
+    has_end = END_MARKER in existing
+
+    if has_start != has_end:
+        raise ValueError("found only one Goal Companion marker")
+
+    if has_start and has_end:
+        updated = MARKER_PATTERN.sub(STANDING_BLOCK, existing, count=1)
+        if updated == existing:
+            return existing, "present"
+        return updated.rstrip() + "\n", "updated"
+
+    return append_block(existing), "appended"
+
+
 def main() -> int:
     args = parse_args()
     target = args.path.expanduser()
 
     existing = target.read_text(encoding="utf-8") if target.exists() else ""
-    has_start = START_MARKER in existing
-    has_end = END_MARKER in existing
+    try:
+        updated, action = upsert_block(existing)
+    except ValueError as exc:
+        print(f"Refusing to edit {target}: {exc}.", file=sys.stderr)
+        return 2
 
-    if has_start and has_end:
+    if action == "present":
         print(f"Goal Companion standing instruction already present: {target}")
         return 0
 
-    if has_start != has_end:
-        print(
-            f"Refusing to edit {target}: found only one Goal Companion marker.",
-            file=sys.stderr,
-        )
-        return 2
-
-    updated = append_block(existing)
-
     if args.dry_run:
-        print(f"Would append Goal Companion standing instruction to: {target}")
+        verb = "update" if action == "updated" else "append"
+        print(f"Would {verb} Goal Companion standing instruction in: {target}")
         print()
         print(STANDING_BLOCK, end="")
         return 0
 
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(updated, encoding="utf-8")
-    print(f"Installed Goal Companion standing instruction: {target}")
+    past = "Updated" if action == "updated" else "Installed"
+    print(f"{past} Goal Companion standing instruction: {target}")
     return 0
 
 
