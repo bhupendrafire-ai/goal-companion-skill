@@ -88,6 +88,41 @@ Next 25-minute focus:
 <specific next action or checkpoint question>
 ```
 
+## Discord Check-In Payload
+
+Pass this JSON shape to `scripts/discord_webhook.py send`. Include public summaries only.
+
+```json
+{
+  "goal": "<current public goal>",
+  "since_last_checkin": "<what happened since the last check-in>",
+  "evidence": [
+    "<test, file, log summary, screenshot summary, decision, or observed behavior>"
+  ],
+  "blockers_or_drift": [
+    "<blocker, scope change, uncertainty, or None>"
+  ],
+  "suggested_goal_statements": {
+    "Recommended": "<best current goal statement>",
+    "Tighter": "<smaller/simpler version, or Not needed>",
+    "Stretch": "<broader version only if useful, or Not needed>"
+  },
+  "next_25_minute_focus": "<specific next action or checkpoint question>"
+}
+```
+
+The resulting Discord request must include:
+
+```json
+{
+  "allowed_mentions": {
+    "parse": []
+  }
+}
+```
+
+Do not include raw diffs, private reasoning, webhook URLs, credentials, API keys, environment variables, or personal data in Discord payloads.
+
 ## Goal Upgrade Response Format
 
 ```text
