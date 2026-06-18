@@ -6,7 +6,7 @@
 
 A Codex skill that gives long-running goals a second brain.
 
-Goal Companion creates a background side thread for active Codex goals, feeds it compact checkpoints, and asks it to suggest sharper goal statements as the work unfolds. Every 25 minutes, it should also give the user a readable check-in: what happened since the last check-in, what evidence changed, what is blocked, and what goal statement now fits best.
+Goal Companion creates a background side thread for active Codex goals, feeds it compact checkpoints, and asks it to suggest sharper goal statements as the work unfolds. Every 25 minutes, it should also give the user a readable check-in: what happened since the last check-in, what evidence changed, what is blocked, and what goal statement now fits best. Optionally, those public check-ins can be sent to Discord through a locally stored webhook.
 
 ## Why
 
@@ -27,8 +27,9 @@ It is basically a quiet goal editor riding shotgun.
 - Gives the user a concise overview of what happened since the last check-in.
 - Sends milestone checkpoints after planning, discovery, implementation, testing, blockers, and finalization.
 - Suggests updated goal statements alongside each check-in summary.
+- Optionally posts the same public check-in capsule to Discord through a webhook.
 - Defines acceptance criteria, stop conditions, risks, and next checkpoint questions.
-- Includes an idempotent installer for a standing Codex instruction.
+- Includes idempotent installers for standing Codex instructions and local Discord setup.
 - Updates older Goal Companion standing-instruction blocks when the skill evolves.
 
 ## Important Limitation
@@ -76,6 +77,7 @@ On first use, the skill checks whether this block exists in your Codex `AGENTS.m
 # Goal Companion
 - Whenever I start a goal, use goal-companion and create a background side thread to refine goal statements.
 - Every 25 minutes during long goals, give me a concise overview of what happened since the last check-in, send that checkpoint to the companion, and include suggested updated goal statements with the summary.
+- If Discord delivery is locally configured, send the same public check-in capsule to Discord with mentions disabled and no secrets.
 - Stop the keepalive when the goal finishes.
 <!-- goal-companion:end -->
 ```
@@ -97,6 +99,44 @@ Goal-style invocation after the standing instruction is installed:
 ```
 
 The companion should then help refine the active objective as checkpoints come in.
+
+## Discord Webhook Setup
+
+Discord delivery is optional. A Discord webhook URL is a secret because anyone with it can post to that channel. Do **not** paste the webhook URL into Codex chat, GitHub, README files, issue comments, or logs.
+
+Configure it locally with the hidden prompt:
+
+```powershell
+py -3 $env:USERPROFILE\.codex\skills\goal-companion\scripts\discord_webhook.py configure
+```
+
+Check status without revealing the URL:
+
+```powershell
+py -3 $env:USERPROFILE\.codex\skills\goal-companion\scripts\discord_webhook.py status
+```
+
+Send a safe test message only when you mean to post to Discord:
+
+```powershell
+py -3 $env:USERPROFILE\.codex\skills\goal-companion\scripts\discord_webhook.py test --yes
+```
+
+Remove the local webhook config:
+
+```powershell
+py -3 $env:USERPROFILE\.codex\skills\goal-companion\scripts\discord_webhook.py clear
+```
+
+By default, the webhook URL is stored at:
+
+```text
+%LOCALAPPDATA%\GoalCompanion\discord.json
+```
+
+Set `GOAL_COMPANION_DISCORD_CONFIG` to use a different local config file.
+
+The sender follows Discord webhook basics from the official [Discord Webhook Resource](https://docs.discord.com/developers/resources/webhook): it sends JSON with message content or embeds, uses `?wait=true` for visible failures, and disables mentions with `allowed_mentions`.
 
 ## The 25-Minute Check-In
 
@@ -121,6 +161,8 @@ Next 25-minute focus:
 <the clearest next move>
 ```
 
+If Discord is configured, the same public capsule is posted as a Discord embed. The helper redacts Discord webhook URLs, common token-looking values, bearer tokens, and visible ping patterns such as `@everyone`, `@here`, and raw Discord mentions.
+
 This is the core upgrade: the heartbeat is not just a wakeup. It becomes a useful progress digest and goal-tuning moment.
 
 ## How It Works
@@ -135,6 +177,7 @@ flowchart LR
     E --> A
     B --> F[Heartbeat Keepalive]
     F --> D
+    D --> G[Optional Discord Webhook]
 ```
 
 The side thread does not execute the task. It reviews progress summaries and returns better goal language, criteria, risks, and stopping rules.
@@ -149,6 +192,7 @@ The side thread does not execute the task. It reviews progress summaries and ret
 ├── references/
 │   └── templates.md
 └── scripts/
+    ├── discord_webhook.py
     └── install_standing_instruction.py
 ```
 
@@ -158,8 +202,10 @@ Goal Companion is intentionally conservative:
 
 - It does not silently rewrite your active goal.
 - It asks before installing global standing instructions.
-- It keeps companion updates compact and public.
-- It falls back to checkpoint-only mode if thread or automation tools are unavailable.
+- It keeps companion and Discord updates public and compact.
+- It never needs the Discord webhook URL in chat.
+- It stores Discord config outside the repo and prints only a fingerprint.
+- It falls back to checkpoint-only mode if thread, automation, or Discord tools are unavailable.
 - It pauses keepalive behavior when the goal finishes, is canceled, or is blocked.
 
 ## Roadmap Ideas
