@@ -1,11 +1,11 @@
 ---
 name: goal-companion
-description: Create and coordinate a Codex background side thread that refines active goal statements during /goal starts, goal updates, long-running goals, resumed goals, or explicit goal refinement requests. Use when the user starts or resumes a /goal, asks to keep a long Codex run aligned, wants upgraded goal statements, wants a side chat or companion thread for goal coaching, or mentions goal drift, stop conditions, acceptance criteria, checkpoints, or keeping a goal companion alive.
+description: Create and coordinate a Codex background side thread that refines active goal statements during /goal starts, goal updates, long-running goals, resumed goals, or explicit goal refinement requests. Use when the user starts or resumes a /goal, asks to keep a long Codex run aligned, wants 25-minute check-in summaries, wants upgraded goal statements, wants a side chat or companion thread for goal coaching, or mentions goal drift, stop conditions, acceptance criteria, checkpoints, summaries since last check-in, or keeping a goal companion alive.
 ---
 
 # Goal Companion
 
-Use this skill to keep long Codex goals sharp. The main thread executes the work; the companion side thread acts as a goal editor that proposes upgraded goal statements, acceptance criteria, stop conditions, risks, and next checkpoints.
+Use this skill to keep long Codex goals sharp. The main thread executes the work; the companion side thread acts as a goal editor that proposes upgraded goal statements, acceptance criteria, stop conditions, risks, and next checkpoints. Every long-run heartbeat should also give the user a concise overview of what changed since the last check-in.
 
 ## First-Use Bootstrap
 
@@ -30,7 +30,7 @@ py -3 C:\Users\Piculiar\.codex\skills\goal-companion\scripts\install_standing_in
 py -3 C:\Users\Piculiar\.codex\skills\goal-companion\scripts\install_standing_instruction.py
 ```
 
-The installer is idempotent. If the block already exists, do not ask again and continue.
+The installer is idempotent and upgrades the marker-delimited block when this skill's standing instruction changes. If the block already exists, continue without asking again unless the installer would write a change.
 
 ## Companion Setup
 
@@ -56,7 +56,15 @@ Send compact updates to the side thread at these moments:
 - When blocked, when scope expands, or when assumptions change.
 - Before final response or goal completion.
 
-Use the "Checkpoint update prompt" from `references/templates.md`. Ask the companion for a revised goal only when new evidence changes scope, criteria, risk, or the likely stopping point.
+Use the "Checkpoint update prompt" from `references/templates.md`. Every checkpoint response should include a Check-In Capsule:
+
+- Since last check-in: what changed, in plain language.
+- Evidence: tests, files, logs, screenshots, decisions, or observed behavior.
+- Blockers or drift: anything slowing, widening, or changing the run.
+- Suggested goal statements: one recommended upgraded goal plus optional tighter/stretch variants.
+- Next 25-minute focus: the clearest next move before the next heartbeat.
+
+Ask the companion for revised goal statements only when new evidence changes scope, criteria, risk, or the likely stopping point.
 
 The companion never silently changes the active goal. It returns suggested language. The main thread decides whether to show the suggestion to the user, incorporate it into a visible plan, or ask the user to accept a goal update.
 
@@ -72,7 +80,15 @@ For long goals, create or update a heartbeat automation attached to the main loc
 
 Before creating a heartbeat, inspect existing automations when possible and update a matching `Goal Companion Keepalive - ...` automation instead of creating a duplicate.
 
-The heartbeat should wake the main thread, summarize progress publicly, send a compact checkpoint to the side thread with `send_message_to_thread`, and ask for an upgraded goal statement only if the active goal is still running. If the goal is done, blocked, canceled, or the companion thread id is missing, the heartbeat should report that clearly and stop or pause itself when possible.
+The heartbeat must run every 25 minutes while the goal is active. Each heartbeat should:
+
+1. Compare the current visible state with the previous check-in.
+2. Give the user a short public overview of what happened since the last check-in.
+3. Send a compact checkpoint to the side thread with `send_message_to_thread`.
+4. Return suggested updated goal statements alongside the summary.
+5. Name the next 25-minute focus and the next checkpoint question.
+
+If there is no meaningful progress, say that plainly and suggest the smallest useful next move. If the goal is done, blocked, canceled, or the companion thread id is missing, report that state and stop or pause the matching heartbeat automation when possible.
 
 If automation tools are unavailable, fall back to manual checkpoint pings and tell the user the keepalive could not be installed.
 
