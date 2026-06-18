@@ -6,12 +6,13 @@
 
 A Codex skill that gives long-running goals a second brain.
 
-Goal Companion creates a background side thread for active Codex goals, feeds it compact checkpoints, and asks it to suggest sharper goal statements as the work unfolds. The main thread keeps building. The companion keeps the mission honest.
+Goal Companion creates a background side thread for active Codex goals, feeds it compact checkpoints, and asks it to suggest sharper goal statements as the work unfolds. Every 25 minutes, it should also give the user a readable check-in: what happened since the last check-in, what evidence changed, what is blocked, and what goal statement now fits best.
 
 ## Why
 
 Long Codex runs can start with a goal that feels clear, then drift as discovery, blockers, tests, and scope changes pile up. Goal Companion turns that drift into an explicit feedback loop:
 
+- What happened since the last check-in?
 - What is the current goal now that we know more?
 - What evidence proves the goal is done?
 - What should stay out of scope?
@@ -22,11 +23,13 @@ It is basically a quiet goal editor riding shotgun.
 ## What It Does
 
 - Creates a Codex background side thread for goal refinement.
+- Runs a long-goal heartbeat every 25 minutes.
+- Gives the user a concise overview of what happened since the last check-in.
 - Sends milestone checkpoints after planning, discovery, implementation, testing, blockers, and finalization.
-- Suggests upgraded goal statements without silently changing the active goal.
+- Suggests updated goal statements alongside each check-in summary.
 - Defines acceptance criteria, stop conditions, risks, and next checkpoint questions.
 - Includes an idempotent installer for a standing Codex instruction.
-- Supports a heartbeat workflow so long goals keep their companion awake.
+- Updates older Goal Companion standing-instruction blocks when the skill evolves.
 
 ## Important Limitation
 
@@ -72,11 +75,12 @@ On first use, the skill checks whether this block exists in your Codex `AGENTS.m
 <!-- goal-companion:start -->
 # Goal Companion
 - Whenever I start a goal, use goal-companion and create a background side thread to refine goal statements.
-- During long goals, keep the companion active with heartbeat and milestone checkpoint updates, and stop the keepalive when the goal finishes.
+- Every 25 minutes during long goals, give me a concise overview of what happened since the last check-in, send that checkpoint to the companion, and include suggested updated goal statements with the summary.
+- Stop the keepalive when the goal finishes.
 <!-- goal-companion:end -->
 ```
 
-If the block is missing, the skill runs a dry-run and asks before changing global Codex behavior.
+If the block is missing or older, the installer can append or update the marker-delimited block safely.
 
 ## Usage
 
@@ -94,18 +98,43 @@ Goal-style invocation after the standing instruction is installed:
 
 The companion should then help refine the active objective as checkpoints come in.
 
+## The 25-Minute Check-In
+
+For long goals, each heartbeat should produce a small check-in capsule:
+
+```text
+Since last check-in:
+<what changed in plain language>
+
+Evidence:
+- <tests, files, logs, screenshots, decisions, or observed behavior>
+
+Blockers or drift:
+- <anything slowing, widening, or changing the run>
+
+Suggested goal statements:
+- Recommended: <best current goal statement>
+- Tighter: <smaller version if useful>
+- Stretch: <broader version if useful>
+
+Next 25-minute focus:
+<the clearest next move>
+```
+
+This is the core upgrade: the heartbeat is not just a wakeup. It becomes a useful progress digest and goal-tuning moment.
+
 ## How It Works
 
 ```mermaid
 flowchart LR
     A[Main Codex Goal] --> B[Goal Companion Skill]
     B --> C[Background Side Thread]
-    A --> D[Milestone Checkpoints]
+    A --> D[25-Minute Check-In Capsule]
     D --> C
-    C --> E[Upgraded Goal Suggestions]
+    C --> E[Suggested Goal Statements]
     E --> A
     B --> F[Heartbeat Keepalive]
-    F --> A
+    F --> D
 ```
 
 The side thread does not execute the task. It reviews progress summaries and returns better goal language, criteria, risks, and stopping rules.
