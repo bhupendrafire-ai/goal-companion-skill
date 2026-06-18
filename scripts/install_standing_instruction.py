@@ -16,6 +16,7 @@ STANDING_BLOCK = """<!-- goal-companion:start -->
 # Goal Companion
 - Whenever I start a goal, use goal-companion and create a background side thread to refine goal statements.
 - Every 25 minutes during long goals, give me a concise overview of what happened since the last check-in, send that checkpoint to the companion, and include suggested updated goal statements with the summary.
+- If Discord delivery is locally configured, send the same public check-in capsule to Discord with mentions disabled and no secrets.
 - Stop the keepalive when the goal finishes.
 <!-- goal-companion:end -->
 """
