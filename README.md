@@ -4,9 +4,9 @@
 ![Status](https://img.shields.io/badge/status-experimental-2563eb?style=for-the-badge)
 ![Python](https://img.shields.io/badge/python-3.x-16a34a?style=for-the-badge)
 
-A Codex skill that gives long-running goals a second brain.
+A quiet Codex skill for long-running goals that need a second brain.
 
-Goal Companion creates a background side thread for active Codex goals, feeds it compact checkpoints, and asks it to suggest sharper goal statements as the work unfolds. Every 25 minutes, it should also give the user a readable check-in: what happened since the last check-in, what evidence changed, what is blocked, and what goal statement now fits best. Optionally, those public check-ins can be sent to Discord through a locally stored webhook.
+Goal Companion can create a background side thread for explicitly enabled long Codex goals, feed it compact checkpoints, and ask it to suggest sharper goal statements as the work unfolds. By default it stays quiet: no side thread, heartbeat, Discord setup prompt, or repeated goal rewrites unless the user asks for that behavior. Optionally, a brief public review of enabled check-ins can be sent to Discord through a locally stored webhook.
 
 ## Why
 
@@ -22,12 +22,12 @@ It is basically a quiet goal editor riding shotgun.
 
 ## What It Does
 
-- Creates a Codex background side thread for goal refinement.
-- Runs a long-goal heartbeat every 25 minutes.
-- Gives the user a concise overview of what happened since the last check-in.
-- Sends milestone checkpoints after planning, discovery, implementation, testing, blockers, and finalization.
-- Suggests updated goal statements alongside each check-in summary.
-- Optionally posts the same public check-in capsule to Discord through a webhook.
+- Creates a Codex background side thread for goal refinement when explicitly enabled.
+- Runs a long-goal heartbeat every 25 minutes only when the user opts in.
+- Gives the user a concise overview of meaningful changes since the last check-in.
+- Sends milestone checkpoints after meaningful planning, discovery, implementation, testing, blockers, and finalization.
+- Suggests updated goal statements only when requested or when the goal materially changes.
+- Optionally posts a short public progress review to Discord through a webhook when requested.
 - Defines acceptance criteria, stop conditions, risks, and next checkpoint questions.
 - Includes idempotent installers for standing Codex instructions and local Discord setup.
 - Updates older Goal Companion standing-instruction blocks when the skill evolves.
@@ -75,10 +75,11 @@ On first use, the skill checks whether this block exists in your Codex `AGENTS.m
 ```md
 <!-- goal-companion:start -->
 # Goal Companion
-- Whenever I start a goal, use goal-companion and create a background side thread to refine goal statements.
-- Every 25 minutes during long goals, give me a concise overview of what happened since the last check-in, send that checkpoint to the companion, and include suggested updated goal statements with the summary.
-- If Discord delivery is locally configured, send the same public check-in capsule to Discord with mentions disabled and no secrets.
-- Stop the keepalive when the goal finishes.
+- Use goal-companion only when I explicitly ask for it, ask for a companion side thread, ask for goal check-ins/keepalive, or ask to refine a goal statement.
+- For ordinary short goals, stay quiet: no side thread, heartbeat, Discord prompt, or repeated goal rewrites.
+- For long goals where I opt in, give concise check-ins about meaningful changes, send compact checkpoints to the companion, and suggest updated goal statements only when scope, risk, acceptance criteria, or stop conditions changed.
+- If Discord delivery is explicitly requested and locally configured, send only a brief public review of what happened since the previous check-in with mentions disabled and no secrets.
+- Pause the keepalive when the goal finishes, is canceled, or is genuinely blocked.
 <!-- goal-companion:end -->
 ```
 
@@ -92,13 +93,13 @@ Explicit invocation:
 Use $goal-companion to create a side thread that refines this goal as the run proceeds.
 ```
 
-Goal-style invocation after the standing instruction is installed:
+Long-goal invocation after the standing instruction is installed:
 
 ```text
-/goal Build and verify the export workflow end to end.
+/goal Use Goal Companion keepalive while you build and verify the export workflow end to end.
 ```
 
-The companion should then help refine the active objective as checkpoints come in.
+The companion should then help refine the active objective as meaningful checkpoints come in. Ordinary short goals should not trigger side threads or heartbeats.
 
 ## Discord Webhook Setup
 
@@ -140,7 +141,7 @@ The sender follows Discord webhook basics from the official [Discord Webhook Res
 
 ## The 25-Minute Check-In
 
-For long goals, each heartbeat should produce a small check-in capsule:
+For explicitly enabled long goals, each heartbeat should produce a small check-in capsule:
 
 ```text
 Since last check-in:
@@ -153,15 +154,13 @@ Blockers or drift:
 - <anything slowing, widening, or changing the run>
 
 Suggested goal statements:
-- Recommended: <best current goal statement>
-- Tighter: <smaller version if useful>
-- Stretch: <broader version if useful>
+- <only when requested or materially changed; otherwise "No material change">
 
 Next 25-minute focus:
 <the clearest next move>
 ```
 
-If Discord is configured, the same public capsule is posted as a Discord embed. The helper redacts Discord webhook URLs, common token-looking values, bearer tokens, and visible ping patterns such as `@everyone`, `@here`, and raw Discord mentions.
+If Discord is configured, Discord receives only a brief public review of what happened since the previous check-in. The Discord message does not include the active goal or suggested goal statements. The helper redacts Discord webhook URLs, common token-looking values, bearer tokens, and visible ping patterns such as `@everyone`, `@here`, and raw Discord mentions.
 
 This is the core upgrade: the heartbeat is not just a wakeup. It becomes a useful progress digest and goal-tuning moment.
 

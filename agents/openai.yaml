@@ -1,4 +1,4 @@
 interface:
   display_name: "Goal Companion"
-  short_description: "Keep long Codex goals sharp with a side thread."
-  default_prompt: "Use $goal-companion to create a side thread that refines this goal as the run proceeds."
+  short_description: "Quietly refine long Codex goals when enabled."
+  default_prompt: "Use $goal-companion in quiet mode to refine this long goal, creating a side thread or keepalive only if needed."

@@ -30,6 +30,8 @@ SECRET_ASSIGNMENT_RE = re.compile(
 )
 BEARER_RE = re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+")
 MENTION_RE = re.compile(r"<(@[!&]?|#)\d+>")
+MOJIBAKE_BOM = "ï»¿"
+SUMMARY_KEYS = ("since_last_checkin", "review", "summary", "progress", "changes")
 
 
 def default_config_path() -> Path:
@@ -154,9 +156,18 @@ def sanitize_text(value: Any, limit: int = 900) -> str:
     return text
 
 
+def normalize_payload_text(raw: str) -> str:
+    text = raw.strip()
+    while text.startswith("\ufeff"):
+        text = text[1:].lstrip()
+    while text.startswith(MOJIBAKE_BOM):
+        text = text[len(MOJIBAKE_BOM) :].lstrip()
+    return text
+
+
 def load_checkin_payload(path: Path | None) -> dict[str, Any]:
     raw = path.read_text(encoding="utf-8") if path else sys.stdin.read()
-    raw = raw.strip()
+    raw = normalize_payload_text(raw)
     if not raw:
         raise ValueError("No check-in payload provided.")
     try:
@@ -168,37 +179,47 @@ def load_checkin_payload(path: Path | None) -> dict[str, Any]:
     return parsed
 
 
+def first_summary_value(checkin: dict[str, Any]) -> Any:
+    for key in SUMMARY_KEYS:
+        value = checkin.get(key)
+        if value is None:
+            continue
+        if isinstance(value, str) and not value.strip():
+            continue
+        return value
+    return None
+
+
+def nested_checkin_from_text(value: Any) -> dict[str, Any] | None:
+    if not isinstance(value, str):
+        return None
+    text = normalize_payload_text(value)
+    if not text.startswith("{"):
+        return None
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def public_review(checkin: dict[str, Any]) -> str:
+    review = first_summary_value(checkin)
+    nested = nested_checkin_from_text(review)
+    if nested is not None:
+        review = first_summary_value(nested)
+    text = sanitize_text(
+        review or "No meaningful progress was recorded since the last check-in.",
+        1200,
+    ).strip()
+    if not text or text.lower() in {"none", "- none"}:
+        return "No meaningful progress was recorded since the last check-in."
+    return text
+
+
 def discord_payload(checkin: dict[str, Any]) -> dict[str, Any]:
     title = sanitize_text(checkin.get("title", "Goal Companion Check-In"), 240)
-    goal = sanitize_text(checkin.get("goal") or checkin.get("current_goal"), 900)
-    since = sanitize_text(
-        checkin.get("since_last_checkin")
-        or checkin.get("summary")
-        or checkin.get("progress"),
-        900,
-    )
-    evidence = sanitize_text(checkin.get("evidence", "None"), 900)
-    blockers = sanitize_text(
-        checkin.get("blockers_or_drift")
-        or checkin.get("blockers")
-        or checkin.get("risks")
-        or "None",
-        900,
-    )
-    suggested = sanitize_text(
-        checkin.get("suggested_goal_statements")
-        or checkin.get("suggested_goals")
-        or checkin.get("recommended_goal")
-        or "No material change",
-        900,
-    )
-    next_focus = sanitize_text(
-        checkin.get("next_25_minute_focus")
-        or checkin.get("next_focus")
-        or checkin.get("next_checkpoint")
-        or "Continue the current goal.",
-        900,
-    )
+    review = public_review(checkin)
 
     return {
         "username": "Goal Companion",
@@ -207,25 +228,10 @@ def discord_payload(checkin: dict[str, Any]) -> dict[str, Any]:
         "embeds": [
             {
                 "title": title,
+                "description": review,
                 "color": 3447003,
                 "timestamp": now_iso(),
-                "fields": [
-                    {"name": "Current goal", "value": goal, "inline": False},
-                    {"name": "Since last check-in", "value": since, "inline": False},
-                    {"name": "Evidence", "value": evidence, "inline": False},
-                    {"name": "Blockers or drift", "value": blockers, "inline": False},
-                    {
-                        "name": "Suggested goal statements",
-                        "value": suggested,
-                        "inline": False,
-                    },
-                    {
-                        "name": "Next 25-minute focus",
-                        "value": next_focus,
-                        "inline": False,
-                    },
-                ],
-                "footer": {"text": "Mentions disabled. Public summary only."},
+                "footer": {"text": "Public progress review. Mentions disabled."},
             }
         ],
     }
@@ -324,14 +330,10 @@ def cmd_test(args: argparse.Namespace) -> int:
     payload = discord_payload(
         {
             "title": "Goal Companion Test",
-            "goal": "Verify Discord check-ins are configured.",
-            "since_last_checkin": "This is a safe test message from Goal Companion.",
-            "evidence": ["Local Discord webhook config exists."],
-            "blockers_or_drift": "None",
-            "suggested_goal_statements": {
-                "Recommended": "Use Discord for public Goal Companion check-ins."
-            },
-            "next_25_minute_focus": "Start a real goal when ready.",
+            "since_last_checkin": (
+                "Discord delivery is configured and this safe test message rendered "
+                "as a brief progress review."
+            ),
         }
     )
     ok, message = post_to_discord(url, payload, timeout=args.timeout)

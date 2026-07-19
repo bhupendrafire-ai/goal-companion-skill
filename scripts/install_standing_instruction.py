@@ -14,10 +14,11 @@ START_MARKER = "<!-- goal-companion:start -->"
 END_MARKER = "<!-- goal-companion:end -->"
 STANDING_BLOCK = """<!-- goal-companion:start -->
 # Goal Companion
-- Whenever I start a goal, use goal-companion and create a background side thread to refine goal statements.
-- Every 25 minutes during long goals, give me a concise overview of what happened since the last check-in, send that checkpoint to the companion, and include suggested updated goal statements with the summary.
-- If Discord delivery is locally configured, send the same public check-in capsule to Discord with mentions disabled and no secrets.
-- Stop the keepalive when the goal finishes.
+- Use goal-companion only when I explicitly ask for it, ask for a companion side thread, ask for goal check-ins/keepalive, or ask to refine a goal statement.
+- For ordinary short goals, stay quiet: no side thread, heartbeat, Discord prompt, or repeated goal rewrites.
+- For long goals where I opt in, give concise check-ins about meaningful changes, send compact checkpoints to the companion, and suggest updated goal statements only when scope, risk, acceptance criteria, or stop conditions changed.
+- If Discord delivery is explicitly requested and locally configured, send only a brief public review of what happened since the previous check-in with mentions disabled and no secrets.
+- Pause the keepalive when the goal finishes, is canceled, or is genuinely blocked.
 <!-- goal-companion:end -->
 """
 MARKER_PATTERN = re.compile(

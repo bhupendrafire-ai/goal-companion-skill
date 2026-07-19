@@ -47,7 +47,7 @@ Evidence gathered:
 Open risks, blockers, or scope changes:
 {risks}
 
-Please return the Check-In Capsule and Goal Upgrade Response Format. Always include a concise overview of what happened since the previous check-in. Include suggested goal statements alongside the summary. Only recommend replacing the active goal when the new evidence changes outcome, scope, acceptance criteria, risk, or stop conditions.
+Please return a concise Check-In Capsule. Always include what meaningfully changed since the previous check-in. Include suggested goal statements only when requested or when new evidence changes outcome, scope, acceptance criteria, risk, or stop conditions.
 ```
 
 ## Heartbeat Keepalive Prompt
@@ -64,7 +64,7 @@ Current goal summary:
 Previous check-in:
 {previous_checkin}
 
-Run every 25 minutes while this goal is active. If the goal is still active, give the user a short public overview of what happened since the last check-in, send a compact checkpoint to the companion thread with send_message_to_thread, and return suggested updated goal statements alongside the summary. If the goal is complete, blocked, canceled, or the companion thread id is unavailable, report that state and pause the matching heartbeat automation if possible.
+Run only when keepalive was explicitly enabled for this goal. If the goal is still active, give the user a short public overview of meaningful changes since the last check-in, send one compact checkpoint to the companion thread with send_message_to_thread, and include suggested updated goal statements only when the goal materially changed or the user requested them. If Discord is configured for this enabled keepalive, send only the brief public overview there; do not include the current goal or suggested goal statements in the Discord message. If the goal is complete, blocked, canceled, or the companion thread id is unavailable, report that state and pause the matching heartbeat automation if possible.
 ```
 
 ## Check-In Capsule
@@ -80,9 +80,7 @@ Blockers or drift:
 - <blocker, scope change, uncertainty, or "None">
 
 Suggested goal statements:
-- Recommended: <best current goal statement>
-- Tighter: <smaller/simpler version, or "Not needed">
-- Stretch: <broader version only if useful, or "Not needed">
+- <include only if requested or materially changed; otherwise write "No material change">
 
 Next 25-minute focus:
 <specific next action or checkpoint question>
@@ -90,24 +88,11 @@ Next 25-minute focus:
 
 ## Discord Check-In Payload
 
-Pass this JSON shape to `scripts/discord_webhook.py send`. Include public summaries only.
+Pass this JSON shape to `scripts/discord_webhook.py send`. Include only a brief public review of what changed since the previous check-in.
 
 ```json
 {
-  "goal": "<current public goal>",
-  "since_last_checkin": "<what happened since the last check-in>",
-  "evidence": [
-    "<test, file, log summary, screenshot summary, decision, or observed behavior>"
-  ],
-  "blockers_or_drift": [
-    "<blocker, scope change, uncertainty, or None>"
-  ],
-  "suggested_goal_statements": {
-    "Recommended": "<best current goal statement>",
-    "Tighter": "<smaller/simpler version, or Not needed>",
-    "Stretch": "<broader version only if useful, or Not needed>"
-  },
-  "next_25_minute_focus": "<specific next action or checkpoint question>"
+  "since_last_checkin": "<one to three sentence review of what happened since the last check-in>"
 }
 ```
 
@@ -121,7 +106,7 @@ The resulting Discord request must include:
 }
 ```
 
-Do not include raw diffs, private reasoning, webhook URLs, credentials, API keys, environment variables, or personal data in Discord payloads.
+Do not include the current goal, suggested goal statements, raw diffs, private reasoning, webhook URLs, credentials, API keys, environment variables, or personal data in Discord payloads.
 
 ## Goal Upgrade Response Format
 
